@@ -15,13 +15,14 @@
          int m_gridSize;   //加仓size
          double m_mutilplier;  //加仓倍数
          CTradeMgr *m_TradeMgr;
+         string m_tradeType;
       public:
          CMartiMgr(CTradeMgr *TradeMgr, CDictionary *_dict){
             m_TradeMgr = TradeMgr;
             m_dict = _dict;
          };
          void Init(int gridSize, int maxMarti, double mutilplier);
-         void CheckAllMarti(void);
+         void CheckAllMarti(string tradeType);
          void CheckMarti(CItems* item);
          int  GetBaseMartiTicket(CItems* item);  //获取马丁基准订单号
          bool isNeedMarti(int ticket);
@@ -35,8 +36,9 @@
       m_gridSize = gridSize;
       m_mutilplier = mutilplier;
  }
- void CMartiMgr::CheckAllMarti(void)
+ void CMartiMgr::CheckAllMarti(string tradeType)
  {
+      m_tradeType = tradeType;
       if(m_dict.Total()<=0)return;
       CItems* currItem = m_dict.GetFirstNode();
       for(int i = 1; currItem != NULL; i++)
@@ -69,14 +71,14 @@
          if(OrderSelect(baseTicket, SELECT_BY_TICKET)==true){
             int TradeType = OrderType();
             //string memo = item.GetTicket();
-            if(TradeType == OP_BUY){
+            if(m_tradeType == "buy" && TradeType == OP_BUY){
                   int bTicket = m_TradeMgr.Buy(GetNewOrderLot(item),0,0,"Marti "+item.GetTicket());
                   Print("open new buy marti ticket is:",bTicket);
                   if(bTicket >0){
                      item.Marti.Add(bTicket);
                   }
             }
-            if(TradeType == OP_SELL ){
+            if(m_tradeType == "sell" && TradeType == OP_SELL ){
                   int sTicket = m_TradeMgr.Sell(GetNewOrderLot(item),0,0,"Marti "+item.GetTicket());
                   Print("open new sell marti ticket is:",sTicket);
                   if(sTicket >0){

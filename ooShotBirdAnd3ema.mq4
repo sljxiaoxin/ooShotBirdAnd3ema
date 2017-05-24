@@ -21,10 +21,10 @@
 extern int       MagicNumber     = 20170514;
 extern double    Lots            = 0.2;
 extern double    TPinMoney       = 20;          //Net TP (money)
-extern int       MaxGroupNum     = 5;
+extern int       MaxGroupNum     = 6;
 extern int       MaxMartiNum     = 2;
 extern double    Mutilplier      = 1;   //马丁加仓倍数
-extern int       GridSize        = 50;
+extern int       GridSize        = 40;
 extern int       fastMa          = 50;
 extern int       slowMa          = 89;
 extern int       slowerMa        = 120;
@@ -84,22 +84,23 @@ void OnTick()
             3、开单检测buy / sell。
             4、
          */
-         
+         Print("#############begin############");
          CMaMgr::Init(fastMa,slowMa,slowerMa);
          //objCMartiMgr.Init(GridSize,MaxMartiNum,Mutilplier);
-         objCMartiMgr.CheckAllMarti();
          objProfitMgr.EachColumnDo();
-         objProfitMgr.CheckTakeprofit();
+         objProfitMgr.CheckTakeprofit(checkFastSlowTradeType());
          objProfitMgr.CheckOpenHedg();
+         objCMartiMgr.CheckAllMarti(checkFastSlowTradeType());
          dealRSI();
-         deal3ema();
+         string tradeType = deal3ema();
+         Print("#############end############");
      }
  }
 
 string  tradeType  = "none";      //buy sell none
-void deal3ema()
+string deal3ema()
 {
-   if(objDict.Total()>=MaxGroupNum)return ;
+   if(objDict.Total()>=MaxGroupNum)return tradeTypeCheck();
    string type = "";
    int t = 0;
    if(tradeType == "none"){
@@ -118,11 +119,11 @@ void deal3ema()
             CItems* currItem = objDict.GetLastNode();
             if(currItem.Hedg == 0){
                if(currItem.GetType()== type){
-                  return;
+                  return tradeTypeCheck();
                }
                currItem = objDict.GetPrevNode();
                if(currItem!=NULL && currItem.Hedg == 0){
-                  return;
+                  return tradeTypeCheck();
                }
             }
             currItem = NULL;
@@ -150,11 +151,11 @@ void deal3ema()
             CItems* currItem = objDict.GetLastNode();
             if(currItem.Hedg == 0){
                if(currItem.GetType()== type){
-                  return;
+                  return tradeTypeCheck();
                }
                currItem = objDict.GetPrevNode();
                if(currItem!=NULL && currItem.Hedg == 0){
-                  return;
+                  return tradeTypeCheck();
                }
             }
             currItem = NULL;
@@ -170,6 +171,7 @@ void deal3ema()
          tradeType = "buy";
       }
    }
+   return tradeType;
 }
 
 bool checkFastBuy(){
@@ -231,6 +233,16 @@ string tradeTypeCheck(){
    if(CMaMgr::s_ArrFastMa[0] < CMaMgr::s_ArrSlowMa[0] && 
                 CMaMgr::s_ArrFastMa[0] < CMaMgr::s_ArrSlowerMa[0] && 
                 CMaMgr::s_ArrSlowMa[0] < CMaMgr::s_ArrSlowerMa[0]){
+       return "sell";         
+   }
+   return "none";
+}
+
+string checkFastSlowTradeType(){
+   if(CMaMgr::s_ArrFastMa[0] > CMaMgr::s_ArrSlowMa[0]){
+       return "buy";         
+   }
+   if(CMaMgr::s_ArrFastMa[0] < CMaMgr::s_ArrSlowMa[0] ){
        return "sell";         
    }
    return "none";
@@ -358,6 +370,8 @@ void subPrintDetails()
       for(int i=0;i<currItem.Marti.Total();i++){
          sComment = sComment + currItem.Marti.At(i) + ",";
       }
+      //double itemNet = objProfitMgr.GetNetProfit(currItem);
+      //sComment = sComment + " ==> "+itemNet;
       sComment = sComment + NL;
       if(objDict.Total() >0){
          currItem = objDict.GetNextNode();

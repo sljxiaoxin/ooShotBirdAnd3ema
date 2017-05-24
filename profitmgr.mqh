@@ -21,13 +21,13 @@
          CProfitMgr(CTradeMgr *TradeMgr, CDictionary *_dict){
             m_dict = _dict;
             m_TradeMgr = TradeMgr;
-            m_releaseHedgStep = 200;
+            m_releaseHedgStep = 400;
             m_releaseHedgAdd = 0;
          };
          void Init(double tpmoney);
          void EachColumnDo(void);    //每根柱子需要执行的动作
          void CheckOpenHedg(void);   //检测是否需要开启对冲单，最好每颗柱子开盘执行一次
-         void CheckTakeprofit(void); //检测是否该止盈，应该每次tick执行
+         void CheckTakeprofit(string tradeType); //检测是否该止盈，应该每次tick执行
          double GetNetProfit(CItems* item);  //获取item当前净利润
          double GetNetPips(int ticket);      //获取盈利点数
          bool isOrderClosed(int ticket);     //订单是否已关闭
@@ -88,7 +88,7 @@
       //Print("hedg come in3");
  }
  
- void  CProfitMgr::CheckTakeprofit(void)
+ void  CProfitMgr::CheckTakeprofit(string tradeType)
  {
       //Print("begin profit");
       int ord_arr[20];
@@ -96,9 +96,11 @@
       for(int j=0;j<20;j++){
          ord_arr[j]=0;
       }
+      //Print("m_dict total:",m_dict.Total());
       if(m_dict.Total()<=0)return;
      //Print("m_dict total before:",m_dict.Total());
      CItems* currItem = m_dict.GetFirstNode();
+     //Print("currItem first is:",currItem);
      for(int i = 1; (currItem != NULL && CheckPointer(currItem)!=POINTER_INVALID); i++)
      {
          //Print("come into for");
@@ -107,6 +109,7 @@
             CloseItem(currItem);
             //m_dict.DeleteCurrentNode();  //删除当前节点
             ord_arr[k] = currItem.GetTicket();
+            //Print("====TP OK==================>",currItem.GetTicket());
             k += 1;
          }else{
             //检测是否有对冲单，如果有对冲单，check原单或对冲单是否已有达到100点利润者，哪个先到平仓哪个
@@ -119,13 +122,42 @@
                   double hedgPips = GetNetPips(currItem.Hedg);        //对冲单净盈利点数
                   double tickPips = GetNetPips(currItem.GetTicket()); //原始单净盈利点数 
                   double closePips = 50 + MathCeil(m_releaseHedgAdd/10);
+                  bool isCanClose = true;
                   if(hedgPips > closePips){
-                     m_TradeMgr.Close(currItem.Hedg);
-                     m_releaseHedgAdd += m_releaseHedgStep;
+                     int hedgOrderType;
+                     if(OrderSelect(currItem.Hedg, SELECT_BY_TICKET)==true){
+                        hedgOrderType = OrderType();
+                     }
+                     /*
+                     if(tradeType == "buy" && hedgOrderType == OP_BUY){
+                        isCanClose = false;
+                     }
+                     if(tradeType == "sell" && hedgOrderType == OP_SELL){
+                        isCanClose = false;
+                     }
+                     */
+                     if(isCanClose){
+                        m_TradeMgr.Close(currItem.Hedg);
+                        m_releaseHedgAdd += m_releaseHedgStep;
+                     }
                   }
                   if(tickPips > closePips){
-                     m_TradeMgr.Close(currItem.GetTicket());
-                     m_releaseHedgAdd += m_releaseHedgStep;
+                     int tickOrderType;
+                     if(OrderSelect(currItem.GetTicket(), SELECT_BY_TICKET)==true){
+                        tickOrderType = OrderType();
+                     }
+                     /*
+                     if(tradeType == "buy" && tickOrderType == OP_BUY){
+                        isCanClose = false;
+                     }
+                     if(tradeType == "sell" && tickOrderType == OP_SELL){
+                        isCanClose = false;
+                     }
+                     */
+                     if(isCanClose){
+                        m_TradeMgr.Close(currItem.GetTicket());
+                        m_releaseHedgAdd += m_releaseHedgStep;
+                     }
                   }
                }
             }
