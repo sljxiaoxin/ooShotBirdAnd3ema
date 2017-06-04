@@ -7,7 +7,7 @@
 //+------------------------------------------------------------------+
 #property copyright "xiaoxin003"
 #property link      "yangjx009@139.com"
-#property version   "1.00"
+#property version   "1.10"
 #property strict
 
 #include <Arrays\ArrayInt.mqh>
@@ -18,7 +18,8 @@
 #include "mamgr.mqh"      //均线数值管理类
 #include "profitmgr.mqh"      //均线数值管理类
 
-extern int       MagicNumber     = 20170514;
+extern int       MagicNumber     = 20170604;
+extern bool      isHandCloseHedg = false;   //是否手动解对冲
 extern double    Lots            = 0.2;
 extern double    TPinMoney       = 20;          //Net TP (money)
 extern int       MaxGroupNum     = 5;
@@ -55,7 +56,7 @@ int OnInit()
       objProfitMgr = new CProfitMgr(objCTradeMgr,objDict);
    }
    objCMartiMgr.Init(GridSize, MaxMartiNum, Mutilplier);
-   objProfitMgr.Init(TPinMoney);
+   objProfitMgr.Init(TPinMoney, isHandCloseHedg);
 //---
    return(INIT_SUCCEEDED);
 }
@@ -280,6 +281,11 @@ void RSICrossBuy(int candleNum){
    if(candleNum>6 || objDict.Total()>=MaxGroupNum){
       return ;
    }
+   int indexHighest = iHighest(NULL,0,MODE_CLOSE,50,1);
+   double high = Close[indexHighest];
+   if(high-Ask<10*Pip){
+      return;
+   }
    if(objDict.Total() >0){
       CItems* currItem = objDict.GetLastNode();
       if(currItem.Hedg == 0){
@@ -297,7 +303,7 @@ void RSICrossBuy(int candleNum){
    //Print("RSICrossBuy s_ma10Overlying----",CMaMgr::s_ma10Overlying);
    //Print("RSICrossBuy s_ma120----",CMaMgr::s_ma120);
    //Print("RSICrossBuy s_ma120Overlying----",CMaMgr::s_ma120Overlying);
-   if(CMaMgr::s_ma10 > CMaMgr::s_ma10Overlying && CMaMgr::s_ma10Overlying > CMaMgr::s_ma120 && CMaMgr::s_ma120>CMaMgr::s_ma120Overlying){
+   if(CMaMgr::s_ma10 > CMaMgr::s_ma120 && CMaMgr::s_ma10Overlying > CMaMgr::s_ma120 && CMaMgr::s_ma120>CMaMgr::s_ma120Overlying){
       //Print("MA BUY!!!");
       int t = 0;
       t = objCTradeMgr.Buy(Lots, 0, 0, "rsi");
@@ -309,8 +315,13 @@ void RSICrossBuy(int candleNum){
 }
 void RSICrossSell(int candleNum){
    //Print("RSICrossSell objDict.total is :",objDict.Total());
-   if(candleNum>6 || objDict.Total()>=MaxGroupNum){
+   if(candleNum>8 || objDict.Total()>=MaxGroupNum){
       return ;
+   }
+   int indexLowest = iLowest(NULL,0,MODE_CLOSE,50,1);
+   double low = Close[indexLowest];
+   if(Bid-low<10*Pip){
+      return;
    }
    if(objDict.Total() >0){
       CItems* currItem = objDict.GetLastNode();
@@ -329,7 +340,7 @@ void RSICrossSell(int candleNum){
   // Print("RSICrossSell s_ma10Overlying----",CMaMgr::s_ma10Overlying);
    //Print("RSICrossSell s_ma120----",CMaMgr::s_ma120);
    //Print("RSICrossSell s_ma120Overlying----",CMaMgr::s_ma120Overlying);
-   if(CMaMgr::s_ma10 < CMaMgr::s_ma10Overlying && CMaMgr::s_ma10Overlying < CMaMgr::s_ma120 && CMaMgr::s_ma120<CMaMgr::s_ma120Overlying){
+   if(CMaMgr::s_ma10 < CMaMgr::s_ma120 && CMaMgr::s_ma10Overlying < CMaMgr::s_ma120 && CMaMgr::s_ma120<CMaMgr::s_ma120Overlying){
       int t = 0;
       t = objCTradeMgr.Sell(Lots, 0, 0, "rsi");
       if(t != 0){

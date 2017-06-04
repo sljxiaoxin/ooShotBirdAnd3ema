@@ -16,6 +16,7 @@
          double m_TpInMoney;
          int m_releaseHedgStep;
          int m_releaseHedgAdd;
+         bool m_isHandCloseHedg;  //是否手动解对冲
       public:
          
          CProfitMgr(CTradeMgr *TradeMgr, CDictionary *_dict){
@@ -24,18 +25,20 @@
             m_releaseHedgStep = 200;
             m_releaseHedgAdd = 0;
          };
-         void Init(double tpmoney);
+         void Init(double tpmoney, bool isHandCloseHedg);
          void EachColumnDo(void);    //每根柱子需要执行的动作
          void CheckOpenHedg(void);   //检测是否需要开启对冲单，最好每颗柱子开盘执行一次
          void CheckTakeprofit(void); //检测是否该止盈，应该每次tick执行
          double GetNetProfit(CItems* item);  //获取item当前净利润
+         bool isItemAllClosed(CItems* item); //手动关闭所有订单，需要释放组
          double GetNetPips(int ticket);      //获取盈利点数
          bool isOrderClosed(int ticket);     //订单是否已关闭
          bool CloseItem(CItems* item);   //关闭item内所有订单
  };
- void CProfitMgr::Init(double tpmoney)
+ void CProfitMgr::Init(double tpmoney, bool isHandCloseHedg)
  {
       m_TpInMoney = tpmoney;
+      m_isHandCloseHedg = isHandCloseHedg;
  }
  void CProfitMgr::EachColumnDo(void)
  {
@@ -109,16 +112,20 @@
             ord_arr[k] = currItem.GetTicket();
             k += 1;
          }else{
-            //检测是否有对冲单，如果有对冲单，check原单或对冲单是否已有达到100点利润者，哪个先到平仓哪个
-            //TODO
-            if(currItem.Hedg != 0){
-               if(isOrderClosed(currItem.Hedg) || isOrderClosed(currItem.GetTicket())){
+            
+            if(isItemAllClosed(currItem)){
+               //检查是否该组所有订单已经关闭，如果已经关闭，则需要释放
+               ord_arr[k] = currItem.GetTicket();
+               k += 1;
+            }else if(currItem.Hedg != 0){
+               //检测是否有对冲单，如果有对冲单，check原单或对冲单是否已有达到100点利润者，哪个先到平仓哪个
+               if(m_isHandCloseHedg || isOrderClosed(currItem.Hedg) || isOrderClosed(currItem.GetTicket())){
                    //如果对冲单和原单其中有一个已经关闭了就不能再关了    
                }else{
                   //哪个先到x点利润就先平仓
                   double hedgPips = GetNetPips(currItem.Hedg);        //对冲单净盈利点数
                   double tickPips = GetNetPips(currItem.GetTicket()); //原始单净盈利点数 
-                  double closePips = 50 + MathCeil(m_releaseHedgAdd/10);
+                  double closePips = 100 + MathCeil(m_releaseHedgAdd/10);
                   if(hedgPips > closePips){
                      m_TradeMgr.Close(currItem.Hedg);
                      m_releaseHedgAdd += m_releaseHedgStep;
@@ -166,6 +173,26 @@
          }
       }
       return _net;
+ }
+ 
+ //如果有手动关闭了某组所有订单，需要释放组
+ bool CProfitMgr::isItemAllClosed(CItems* item)
+ {
+   if(!isOrderClosed(item.GetTicket())){
+      return false;
+   }
+   if(item.Hedg != 0){
+      if(!isOrderClosed(item.Hedg)){
+         return false;
+      }
+   }
+   for(int i=0;i<item.Marti.Total();i++){
+      if(!isOrderClosed(item.Marti.At(i))){
+         return false;
+      }
+   }
+   return true;
+   
  }
  
  bool CProfitMgr::CloseItem(CItems* item)
