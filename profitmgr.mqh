@@ -64,7 +64,8 @@
                int TradeType = OrderType();
                double _lot = OrderLots();
                //Print("log ticket is:",currItem.GetTicket(),"; profit:",_net);
-               if(_net < (-1*3*m_TpInMoney)){
+               //if(_net < (-1*3*m_TpInMoney)){
+	       if(_net < (-1*10*30*_lot)){
                   if(TradeType == OP_BUY){
                      int sTicket = m_TradeMgr.Sell(_lot,0,0,"Hedg "+currItem.GetTicket());
                      if(sTicket >0){
