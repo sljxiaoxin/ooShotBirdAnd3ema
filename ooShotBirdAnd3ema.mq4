@@ -19,9 +19,9 @@
 #include "profitmgr.mqh"      //均线数值管理类
 
 extern int       MagicNumber     = 20170604;
-extern bool      isHandCloseHedg = false;   //是否手动解对冲
-extern double    Lots            = 0.2;
-extern double    TPinMoney       = 20;          //Net TP (money)
+extern bool      isHandCloseHedg = true;   //是否手动解对冲
+extern double    Lots            = 0.1;
+extern double    TPinMoney       = 11;          //Net TP (money)
 extern int       MaxGroupNum     = 5;
 extern int       MaxMartiNum     = 2;
 extern double    Mutilplier      = 1;   //马丁加仓倍数
@@ -29,6 +29,7 @@ extern int       GridSize        = 50;
 extern int       fastMa          = 50;
 extern int       slowMa          = 89;
 extern int       slowerMa        = 120;
+extern double    distance        = 10;   //加仓间隔点数
 
 int       NumberOfTries   = 10,
           Slippage        = 5;
@@ -123,16 +124,18 @@ void deal3ema()
                if(currItem.GetType()== type){
                   return;
                }
-	       diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
-	       if(diff <18){
-		   //当前价格与上一单价格差18点以内
-		   return;
-	       }
+      	       diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
+      	       if(diff <distance){
+      		      //当前价格与上一单价格差18点以内
+      		      return;
+      	       }
                currItem = objDict.GetPrevNode();
                if(currItem!=NULL && currItem.Hedg == 0){
                   return;
                }
+               Print("加仓判断成功");
             }
+            
             currItem = NULL;
             
          }
@@ -163,15 +166,16 @@ void deal3ema()
                if(currItem.GetType()== type){
                   return;
                }
-	       diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
-	       if(diff <18){
-		   //当前价格与上一单价格差18点以内
-		   return;
-	       }
+      	       diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
+      	       if(diff <distance){
+            		   //当前价格与上一单价格差18点以内
+            		   return;
+      	       }
                currItem = objDict.GetPrevNode();
                if(currItem!=NULL && currItem.Hedg == 0){
                   return;
                }
+               Print("加仓判断成功");
             }
             currItem = NULL;
          }
@@ -310,15 +314,16 @@ void RSICrossBuy(int candleNum){
          if(currItem.GetType()== "rsi"){
             return;
          }
-	 double diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
-         if(diff <18){
-	     //当前价格与上一单价格差18点以内
-	     return;
+	      double diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
+         if(diff <distance){
+	         //当前价格与上一单价格差18点以内
+	         return;
          }
          currItem = objDict.GetPrevNode();
          if(currItem!=NULL && currItem.Hedg == 0){
             return;
          }
+         Print("rsi buy加仓判断成功");
       }
       currItem = NULL;
    }
@@ -356,15 +361,16 @@ void RSICrossSell(int candleNum){
          if(currItem.GetType()== "rsi"){
             return;
          }
-	 double diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
-         if(diff <18){
-	     //当前价格与上一单价格差18点以内
-	     return;
+	      double diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
+         if(diff <distance){
+	         //当前价格与上一单价格差18点以内
+	         return;
          }
          currItem = objDict.GetPrevNode();
          if(currItem!=NULL && currItem.Hedg == 0){
             return;
          }
+         Print("rsi sell加仓判断成功");
       }
       currItem = NULL;
    }
