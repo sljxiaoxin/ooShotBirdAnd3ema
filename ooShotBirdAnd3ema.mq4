@@ -103,6 +103,8 @@ void deal3ema()
    if(objDict.Total()>=MaxGroupNum)return ;
    string type = "";
    int t = 0;
+   double oop = 0;
+   double diff = 0;
    if(tradeType == "none"){
       tradeType = tradeTypeCheck();
    }else if(tradeType == "buy"){
@@ -121,6 +123,11 @@ void deal3ema()
                if(currItem.GetType()== type){
                   return;
                }
+	       diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
+	       if(diff <18){
+		   //当前价格与上一单价格差18点以内
+		   return;
+	       }
                currItem = objDict.GetPrevNode();
                if(currItem!=NULL && currItem.Hedg == 0){
                   return;
@@ -132,7 +139,10 @@ void deal3ema()
          if(type != ""){
             t = objCTradeMgr.Buy(Lots, 0, 0, type);
             if(t != 0){
-               objDict.AddObject(t, new CItems(t, type, TPinMoney));
+	       if(OrderSelect(t, SELECT_BY_TICKET)==true){
+		  oop = OrderOpenPrice();
+	       }
+               objDict.AddObject(t, new CItems(t, type, TPinMoney, oop));
             }
          }
       }else if(tradeTypeCheck() == "sell"){
@@ -153,6 +163,11 @@ void deal3ema()
                if(currItem.GetType()== type){
                   return;
                }
+	       diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
+	       if(diff <18){
+		   //当前价格与上一单价格差18点以内
+		   return;
+	       }
                currItem = objDict.GetPrevNode();
                if(currItem!=NULL && currItem.Hedg == 0){
                   return;
@@ -164,7 +179,10 @@ void deal3ema()
          if(type != ""){
             t = objCTradeMgr.Sell(Lots, 0, 0, type);
             if(t != 0){
-               objDict.AddObject(t, new CItems(t, type, TPinMoney));
+	       if(OrderSelect(t, SELECT_BY_TICKET)==true){
+		  oop = OrderOpenPrice();
+	       }
+               objDict.AddObject(t, new CItems(t, type, TPinMoney, oop));
             }
          }
       }else if(tradeTypeCheck() == "buy"){
@@ -292,6 +310,11 @@ void RSICrossBuy(int candleNum){
          if(currItem.GetType()== "rsi"){
             return;
          }
+	 double diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
+         if(diff <18){
+	     //当前价格与上一单价格差18点以内
+	     return;
+         }
          currItem = objDict.GetPrevNode();
          if(currItem!=NULL && currItem.Hedg == 0){
             return;
@@ -303,12 +326,16 @@ void RSICrossBuy(int candleNum){
    //Print("RSICrossBuy s_ma10Overlying----",CMaMgr::s_ma10Overlying);
    //Print("RSICrossBuy s_ma120----",CMaMgr::s_ma120);
    //Print("RSICrossBuy s_ma120Overlying----",CMaMgr::s_ma120Overlying);
+   double oop = 0;
    if(CMaMgr::s_ma10 > CMaMgr::s_ma120 && CMaMgr::s_ma10Overlying > CMaMgr::s_ma120 && CMaMgr::s_ma120>CMaMgr::s_ma120Overlying){
       //Print("MA BUY!!!");
       int t = 0;
       t = objCTradeMgr.Buy(Lots, 0, 0, "rsi");
       if(t != 0){
-         objDict.AddObject(t, new CItems(t, "rsi", TPinMoney));
+	 if(OrderSelect(t, SELECT_BY_TICKET)==true){
+	    oop = OrderOpenPrice();
+         }
+         objDict.AddObject(t, new CItems(t, "rsi", TPinMoney, oop));
       }
    }
    
@@ -329,6 +356,11 @@ void RSICrossSell(int candleNum){
          if(currItem.GetType()== "rsi"){
             return;
          }
+	 double diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
+         if(diff <18){
+	     //当前价格与上一单价格差18点以内
+	     return;
+         }
          currItem = objDict.GetPrevNode();
          if(currItem!=NULL && currItem.Hedg == 0){
             return;
@@ -340,11 +372,15 @@ void RSICrossSell(int candleNum){
   // Print("RSICrossSell s_ma10Overlying----",CMaMgr::s_ma10Overlying);
    //Print("RSICrossSell s_ma120----",CMaMgr::s_ma120);
    //Print("RSICrossSell s_ma120Overlying----",CMaMgr::s_ma120Overlying);
+   double oop = 0;
    if(CMaMgr::s_ma10 < CMaMgr::s_ma120 && CMaMgr::s_ma10Overlying < CMaMgr::s_ma120 && CMaMgr::s_ma120<CMaMgr::s_ma120Overlying){
       int t = 0;
       t = objCTradeMgr.Sell(Lots, 0, 0, "rsi");
       if(t != 0){
-         objDict.AddObject(t, new CItems(t, "rsi", TPinMoney));
+	 if(OrderSelect(t, SELECT_BY_TICKET)==true){
+	    oop = OrderOpenPrice();
+         }
+         objDict.AddObject(t, new CItems(t, "rsi", TPinMoney, oop));
       }
    }
 }

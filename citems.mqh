@@ -12,10 +12,12 @@ class CItems : public CObject
       int m_Ticket;        //当前的订单号
       string m_Type;       //策略类型：first,cross,rsi
       double m_TPMoney;    //止盈，first6倍，cross4倍，rsi1倍
+      double m_Oop;        //开单价格
    public:
       int Hedg;          //对冲单
       CArrayInt *Marti;  //马丁单
-      CItems(int ticket, string type, double tp){
+      CItems(int ticket, string type, double tp, double oop){
+	 m_Oop = oop;
          m_Ticket = ticket;
          m_Type = type;
          if(m_Type == "first"){
@@ -31,4 +33,5 @@ class CItems : public CObject
       string GetType(){return m_Type;}
       double GetTP(){return m_TPMoney;}
       int GetTicket(){return m_Ticket;}
+      double GetOop(){return m_Oop;}
 };
