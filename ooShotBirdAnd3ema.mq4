@@ -31,7 +31,8 @@ extern int       fastMa          = 50;
 extern int       slowMa          = 89;
 extern int       slowerMa        = 120;
 extern double    distance        = 10;   //加仓间隔点数
-extern int       TradingNum      = 2;    //未开对冲单的同时持仓最大数量  
+extern int       TradingNum      = 2;    //未开对冲单的同时持仓最大数量 
+extern int       afterHandCloseMinutes = 180;   //手动解对冲后多少分钟后，订单组如还未到达盈利点，则强制关闭保护
 
 int       NumberOfTries   = 10,
           Slippage        = 5;
@@ -61,7 +62,7 @@ int OnInit()
       objProfitMgr = new CProfitMgr(objCTradeMgr,objDict);
    }
    objCMartiMgr.Init(GridSize, MaxMartiNum, Mutilplier);
-   objProfitMgr.Init(TPinMoney, isHandCloseHedg, hedgingPips);
+   objProfitMgr.Init(TPinMoney, isHandCloseHedg, hedgingPips, afterHandCloseMinutes);
 //---
    return(INIT_SUCCEEDED);
 }
@@ -127,6 +128,7 @@ void deal3ema()
                return;
             }
             if(isTypeInTrading(type)){
+               //相同的交易类型，不能同时持单大于1
                return;
             }
             if(objDict.Total() >0){

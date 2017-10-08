@@ -17,7 +17,8 @@
          int m_releaseHedgStep;
          int m_releaseHedgAdd;
          bool m_isHandCloseHedg;  //是否手动解对冲
-         double m_hedgingPips;
+         double m_hedgingPips;    //多少点开对冲单
+         int m_afterHandCloseMinutes;  //手动解对冲后，过多久自动平仓，分钟数
       public:
          
          CProfitMgr(CTradeMgr *TradeMgr, CDictionary *_dict){
@@ -25,8 +26,9 @@
             m_TradeMgr = TradeMgr;
             m_releaseHedgStep = 200;
             m_releaseHedgAdd = 0;
+            m_afterHandCloseMinutes = 180;
          };
-         void Init(double tpmoney, bool isHandCloseHedg, double hedgingPips);
+         void Init(double tpmoney, bool isHandCloseHedg, double hedgingPips, int afterMinutes);
          void EachColumnDo(void);    //每根柱子需要执行的动作
          void CheckOpenHedg(void);   //检测是否需要开启对冲单，最好每颗柱子开盘执行一次
          void CheckTakeprofit(void); //检测是否该止盈，应该每次tick执行
@@ -36,11 +38,12 @@
          bool isOrderClosed(int ticket);     //订单是否已关闭
          bool CloseItem(CItems* item);   //关闭item内所有订单
  };
- void CProfitMgr::Init(double tpmoney, bool isHandCloseHedg, double hedgingPips)
+ void CProfitMgr::Init(double tpmoney, bool isHandCloseHedg, double hedgingPips, int afterMinutes)
  {
       m_TpInMoney = tpmoney;
       m_isHandCloseHedg = isHandCloseHedg;
       m_hedgingPips = hedgingPips; //亏损多少点开对冲单
+      m_afterHandCloseMinutes = afterMinutes;
  }
  void CProfitMgr::EachColumnDo(void)
  {
@@ -122,8 +125,20 @@
                k += 1;
             }else if(currItem.Hedg != 0){
                //检测是否有对冲单，如果有对冲单，check原单或对冲单是否已有达到100点利润者，哪个先到平仓哪个
-               if(m_isHandCloseHedg || isOrderClosed(currItem.Hedg) || isOrderClosed(currItem.GetTicket())){
-                   //如果对冲单和原单其中有一个已经关闭了就不能再关了    
+               if(m_isHandCloseHedg){
+                   //如果对冲单和原单其中有一个已经关闭了就不能再关了  
+                    if(isOrderClosed(currItem.Hedg) || isOrderClosed(currItem.GetTicket())){
+                        if(!currItem.IsHandClosed()){
+                           currItem.SetHandClosed();  //设置close标记
+                        }
+                        currItem.addHandCloseMinutes(Period());//手动解对冲后，增加每次新柱体的分钟数
+                        Print("afterHandCloseMinutes:",m_afterHandCloseMinutes,"#GetHandCloseMinutes:",currItem.GetHandCloseMinutes());
+                        if(currItem.GetHandCloseMinutes() > m_afterHandCloseMinutes){
+                           CloseItem(currItem);
+                           ord_arr[k] = currItem.GetTicket();
+                           k += 1;
+                        }
+                    }
                }else{
                   //哪个先到x点利润就先平仓
                   double hedgPips = GetNetPips(currItem.Hedg);        //对冲单净盈利点数
