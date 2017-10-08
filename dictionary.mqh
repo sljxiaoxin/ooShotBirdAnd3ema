@@ -6,8 +6,12 @@
 #property copyright "Copyright 2015, Vasiliy Sokolov."
 #property link      "http://www.mql5.com"
 
+
+#include "Fixedbug.mqh";
 #include <Object.mqh>
 #include <Arrays\List.mqh>
+
+
 //+------------------------------------------------------------------+
 //| Container to store CObject elements                              |
 //+------------------------------------------------------------------+
@@ -245,12 +249,14 @@ ulong CDictionary::GetHashByKey(T key)
   {
    ulong ukey = 0;
    string name=typename(key);
+   Print("dictionary.mqh -> GetHashByKey key类型是：",name);
    if(name=="string")
       return Adler32((string)key);
    if(name=="double" || name=="float")
      {
       dValue.value=(double)key;
-      lValue=(ULongValue)dValue;
+      //lValue=(ULongValue)dValue;
+      lValue=_C(ULongValue, dValue);  //Fixedbug
       ukey=lValue.value;
      }
    else
@@ -301,7 +307,7 @@ void CDictionary::Resize(void)
    int level=FindNextLevel();
    int n=level;
    CList *temp_array[];
-   ArrayCopy(temp_array,m_array);
+   ArrayCopy(temp_array,m_array);   //Fixedbug
    ArrayFree(m_array);
    m_array_size=ArrayResize(m_array,n);
    int total=ArraySize(temp_array);

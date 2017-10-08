@@ -17,6 +17,7 @@
          int m_releaseHedgStep;
          int m_releaseHedgAdd;
          bool m_isHandCloseHedg;  //是否手动解对冲
+         double m_hedgingPips;
       public:
          
          CProfitMgr(CTradeMgr *TradeMgr, CDictionary *_dict){
@@ -25,7 +26,7 @@
             m_releaseHedgStep = 200;
             m_releaseHedgAdd = 0;
          };
-         void Init(double tpmoney, bool isHandCloseHedg);
+         void Init(double tpmoney, bool isHandCloseHedg, double hedgingPips);
          void EachColumnDo(void);    //每根柱子需要执行的动作
          void CheckOpenHedg(void);   //检测是否需要开启对冲单，最好每颗柱子开盘执行一次
          void CheckTakeprofit(void); //检测是否该止盈，应该每次tick执行
@@ -35,10 +36,11 @@
          bool isOrderClosed(int ticket);     //订单是否已关闭
          bool CloseItem(CItems* item);   //关闭item内所有订单
  };
- void CProfitMgr::Init(double tpmoney, bool isHandCloseHedg)
+ void CProfitMgr::Init(double tpmoney, bool isHandCloseHedg, double hedgingPips)
  {
       m_TpInMoney = tpmoney;
       m_isHandCloseHedg = isHandCloseHedg;
+      m_hedgingPips = hedgingPips; //亏损多少点开对冲单
  }
  void CProfitMgr::EachColumnDo(void)
  {
@@ -65,7 +67,7 @@
                double _lot = OrderLots();
                //Print("log ticket is:",currItem.GetTicket(),"; profit:",_net);
                //if(_net < (-1*3*m_TpInMoney)){
-	       if(_net < (-1*10*30*_lot)){
+	            if(_net < (-1*10*m_hedgingPips*_lot)){
                   if(TradeType == OP_BUY){
                      int sTicket = m_TradeMgr.Sell(_lot,0,0,"Hedg "+currItem.GetTicket());
                      if(sTicket >0){
@@ -126,7 +128,7 @@
                   //哪个先到x点利润就先平仓
                   double hedgPips = GetNetPips(currItem.Hedg);        //对冲单净盈利点数
                   double tickPips = GetNetPips(currItem.GetTicket()); //原始单净盈利点数 
-                  double closePips = 100 + MathCeil(m_releaseHedgAdd/10);
+                  double closePips = 50 + MathCeil(m_releaseHedgAdd/10);
                   if(hedgPips > closePips){
                      m_TradeMgr.Close(currItem.Hedg);
                      m_releaseHedgAdd += m_releaseHedgStep;

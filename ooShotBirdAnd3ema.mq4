@@ -21,6 +21,7 @@
 extern int       MagicNumber     = 20170604;
 extern bool      isHandCloseHedg = true;   //是否手动解对冲
 extern double    Lots            = 0.1;
+extern double    hedgingPips     = 21;     //亏损多少点开对冲单默认21
 extern double    TPinMoney       = 11;          //Net TP (money)
 extern int       MaxGroupNum     = 5;
 extern int       MaxMartiNum     = 2;
@@ -30,6 +31,7 @@ extern int       fastMa          = 50;
 extern int       slowMa          = 89;
 extern int       slowerMa        = 120;
 extern double    distance        = 10;   //加仓间隔点数
+extern int       TradingNum      = 2;    //未开对冲单的同时持仓最大数量  
 
 int       NumberOfTries   = 10,
           Slippage        = 5;
@@ -40,6 +42,8 @@ CMartiMgr *objCMartiMgr;  //马丁管理类
 CDictionary *objDict = NULL;     //订单数据字典类
 CProfitMgr *objProfitMgr; //利润和仓位管理类
 int tmp = 0;
+
+string arrTradingType[5];   //用于记录当前交易中并且未对冲的交易类型，在subPrintDetails()初始化
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -57,7 +61,7 @@ int OnInit()
       objProfitMgr = new CProfitMgr(objCTradeMgr,objDict);
    }
    objCMartiMgr.Init(GridSize, MaxMartiNum, Mutilplier);
-   objProfitMgr.Init(TPinMoney, isHandCloseHedg);
+   objProfitMgr.Init(TPinMoney, isHandCloseHedg, hedgingPips);
 //---
    return(INIT_SUCCEEDED);
 }
@@ -118,33 +122,28 @@ void deal3ema()
          }else if(checkFastBuy()){
             type = "fast";
          }
-         if(objDict.Total() >0){
-            CItems* currItem = objDict.GetLastNode();
-            if(currItem.Hedg == 0){
-               if(currItem.GetType()== type){
-                  return;
-               }
-      	       diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
-      	       if(diff <distance){
-      		      //当前价格与上一单价格差18点以内
-      		      return;
-      	       }
-               currItem = objDict.GetPrevNode();
-               if(currItem!=NULL && currItem.Hedg == 0){
-                  return;
-               }
-               Print("加仓判断成功");
-            }
-            
-            currItem = NULL;
-            
-         }
          if(type != ""){
+            if(tradingCount() > TradingNum){
+               return;
+            }
+            if(isTypeInTrading(type)){
+               return;
+            }
+            if(objDict.Total() >0){
+               CItems* currItem = objDict.GetLastNode();
+               if(currItem.Hedg == 0){
+                  diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
+         	      if(diff <distance){
+         		     //当前价格与上一单价格差18点以内
+         		     return;
+         	      }
+               }
+            }
             t = objCTradeMgr.Buy(Lots, 0, 0, type);
             if(t != 0){
-	       if(OrderSelect(t, SELECT_BY_TICKET)==true){
-		  oop = OrderOpenPrice();
-	       }
+	            if(OrderSelect(t, SELECT_BY_TICKET)==true){
+		            oop = OrderOpenPrice();
+	            }
                objDict.AddObject(t, new CItems(t, type, TPinMoney, oop));
             }
          }
@@ -160,32 +159,28 @@ void deal3ema()
          }else if(checkFastSell()){
             type = "fast";
          }
-         if(objDict.Total() >0){
-            CItems* currItem = objDict.GetLastNode();
-            if(currItem.Hedg == 0){
-               if(currItem.GetType()== type){
-                  return;
-               }
-      	       diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
-      	       if(diff <distance){
-            		   //当前价格与上一单价格差18点以内
-            		   return;
-      	       }
-               currItem = objDict.GetPrevNode();
-               if(currItem!=NULL && currItem.Hedg == 0){
-                  return;
-               }
-               Print("加仓判断成功");
-            }
-            currItem = NULL;
-         }
-         
          if(type != ""){
+            if(tradingCount() > TradingNum){
+               return;
+            }
+            if(isTypeInTrading(type)){
+               return;
+            }
+            if(objDict.Total() >0){
+               CItems* currItem = objDict.GetLastNode();
+               if(currItem.Hedg == 0){
+                  diff = MathAbs((currItem.GetOop()-((Ask+Bid)/2))/Pip);
+         	      if(diff <distance){
+         		     //当前价格与上一单价格差18点以内
+         		     return;
+         	      }
+               }
+            }
             t = objCTradeMgr.Sell(Lots, 0, 0, type);
             if(t != 0){
-	       if(OrderSelect(t, SELECT_BY_TICKET)==true){
-		  oop = OrderOpenPrice();
-	       }
+	            if(OrderSelect(t, SELECT_BY_TICKET)==true){
+		            oop = OrderOpenPrice();
+	            }
                objDict.AddObject(t, new CItems(t, type, TPinMoney, oop));
             }
          }
@@ -337,8 +332,8 @@ void RSICrossBuy(int candleNum){
       int t = 0;
       t = objCTradeMgr.Buy(Lots, 0, 0, "rsi");
       if(t != 0){
-	 if(OrderSelect(t, SELECT_BY_TICKET)==true){
-	    oop = OrderOpenPrice();
+	      if(OrderSelect(t, SELECT_BY_TICKET)==true){
+	         oop = OrderOpenPrice();
          }
          objDict.AddObject(t, new CItems(t, "rsi", TPinMoney, oop));
       }
@@ -383,8 +378,8 @@ void RSICrossSell(int candleNum){
       int t = 0;
       t = objCTradeMgr.Sell(Lots, 0, 0, "rsi");
       if(t != 0){
-	 if(OrderSelect(t, SELECT_BY_TICKET)==true){
-	    oop = OrderOpenPrice();
+	      if(OrderSelect(t, SELECT_BY_TICKET)==true){
+	         oop = OrderOpenPrice();
          }
          objDict.AddObject(t, new CItems(t, "rsi", TPinMoney, oop));
       }
@@ -394,6 +389,11 @@ void RSICrossSell(int candleNum){
 
 void subPrintDetails()
 {
+   //
+   string arrTradingType_Tmp[5] = {"none","none","none","none","none"};
+   string tradingTypeComment = "\n trading type:";
+   int forTmp = 0;
+   
    string sComment   = "";
    string sp         = "----------------------------------------\n";
    string NL         = "\n";
@@ -408,8 +408,13 @@ void subPrintDetails()
    {
       sComment = sComment + sp;
       sComment = sComment + currItem.GetTicket()+ ":" + currItem.Hedg + " | ";
-      for(int i=0;i<currItem.Marti.Total();i++){
-         sComment = sComment + currItem.Marti.At(i) + ",";
+      for(int j=0;j<currItem.Marti.Total();j++){
+         sComment = sComment + currItem.Marti.At(j) + ",";
+      }
+      //持仓类型填充
+      if(currItem.Hedg == 0 && forTmp<5){
+         arrTradingType_Tmp[forTmp] = currItem.GetType();
+         forTmp += 1;
       }
       sComment = sComment + NL;
       if(objDict.Total() >0){
@@ -418,8 +423,11 @@ void subPrintDetails()
          currItem = NULL;
       }
    }
-   
-  
+   ArrayCopy(arrTradingType,arrTradingType_Tmp,0,0,WHOLE_ARRAY);
+   for(int i=0;i<ArraySize(arrTradingType);i++){
+      tradingTypeComment = tradingTypeComment + arrTradingType[i] + " ,";
+   }
+   sComment = sComment + tradingTypeComment;
    Comment(sComment);
 }
 
@@ -437,6 +445,26 @@ double TotalNetProfit()
          }         
       }
       return op;
+}
+
+//交易中的单子，并且未开对冲的，是否包含传入的交易类型
+bool isTypeInTrading(string type){
+   for(int i=0;i<ArraySize(arrTradingType);i++){
+      if(arrTradingType[i] == type){
+         return true;
+      }
+   }
+   return false;
+}
+//交易中的单子，并且未开对冲的数量
+int tradingCount(){
+   int num = 0;
+   for(int i=0;i<ArraySize(arrTradingType);i++){
+      if(arrTradingType[i] != "none"){
+         num += 1;
+      }
+   }
+   return num;
 }
 
 
